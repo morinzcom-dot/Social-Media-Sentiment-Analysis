@@ -32,6 +32,10 @@ def _normalize_db_url(url: str) -> tuple[str, dict]:
         sslmode = query.pop("sslmode", None)
         if sslmode and sslmode != "disable":
             connect_args["ssl"] = "require"
+        # معاملات إضافية خاصة بـ libpq (يستخدمها Neon/Supabase) لكن asyncpg
+        # لا يعرفها ويرفضها بنفس طريقة رفضه لـ sslmode — يجب حذفها كلها
+        for libpq_only_param in ("channel_binding", "target_session_attrs", "options"):
+            query.pop(libpq_only_param, None)
         url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
     return url, connect_args
