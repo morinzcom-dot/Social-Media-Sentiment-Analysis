@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: sentimentai-api
+    runtime: docker
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./sentiment_ai.db
+      - key: MODEL_TYPE
+        value: logistic
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: '["https://your-frontend-domain.com"]'
+
+# ملاحظة مهمة:
+# قاعدة بيانات Render المُدارة (Render Postgres) ليست مجانية بشكل دائم —
+# نسختها التجريبية المجانية تُحذف تلقائياً بعد 30-90 يوماً، وبعدها تحتاج خطة مدفوعة.
+# لذلك نستخدم هنا SQLite (مجاني تماماً، بدون بطاقة ائتمان) بدلاً منها.
+#
+# ⚠️ القيد الوحيد: التخزين على خطة Render المجانية للسيرفر غير دائم (ephemeral) —
+# يعني قاعدة بيانات SQLite تُصفَّر مع كل إعادة نشر (redeploy) أو إعادة تشغيل تلقائي
+# للسيرفر النائم. هذا مقبول تماماً لعرض تقديمي/مشروع تخرج، لكن لو احتجتم بيانات
+# دائمة فعلاً، استخدموا قاعدة بيانات مجانية دائماً من خارج Render مثل:
+#   - Neon (neon.tech) — PostgreSQL مجاني دائم
+#   - Supabase (supabase.com) — PostgreSQL مجاني دائم
+# ثم ضعوا رابط الاتصال منها في متغير DATABASE_URL بدل السطر أعلاه.

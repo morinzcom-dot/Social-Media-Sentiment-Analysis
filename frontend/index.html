@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تحليل المشاعر لمنشورات التواصل الاجتماعي — نبض</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rakkas&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#12151C;
+    --surface:#1A212C;
+    --surface-2:#212A38;
+    --border:#2A3345;
+    --text:#EDEFF3;
+    --muted:#8B96A8;
+    --gold:#E8B24D;
+    --gold-dim:rgba(232,178,77,.13);
+    --rose:#C1495B;
+    --rose-dim:rgba(193,73,91,.13);
+    --slate:#8B96A8;
+    --slate-dim:rgba(139,150,168,.13);
+    --radius:14px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans Arabic', sans-serif;
+    line-height:1.6;
+    min-height:100vh;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background:
+      radial-gradient(ellipse 900px 500px at 85% -10%, rgba(232,178,77,.08), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 5% 10%, rgba(193,73,91,.06), transparent 60%);
+    pointer-events:none;
+    z-index:0;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:0 24px; position:relative; z-index:1;}
+
+  /* ── Header ── */
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 0; border-bottom:1px solid var(--border);
+  }
+  .brand{display:flex; align-items:baseline; gap:10px;}
+  .brand .logotype{font-family:'Rakkas', serif; font-size:30px; color:var(--gold); letter-spacing:.5px;}
+  .brand .tagline{font-size:13px; color:var(--muted); font-weight:300;}
+  .brand .tagline .lang-sep{color:var(--gold); margin:0 2px;}
+  .api-config{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted);}
+  .api-config input{
+    background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:7px 10px; font-size:12px; width:220px;
+    font-family:inherit; direction:ltr; text-align:left;
+  }
+  .api-config input:focus{outline:none; border-color:var(--gold);}
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--slate); flex-shrink:0; transition:background .3s;}
+  .dot.ok{background:var(--gold); box-shadow:0 0 8px var(--gold);}
+  .dot.err{background:var(--rose); box-shadow:0 0 8px var(--rose);}
+
+  /* ── Hero / Analyzer ── */
+  .hero{padding:64px 0 40px; text-align:center;}
+  .hero h1{
+    font-family:'Rakkas', serif; font-size:clamp(30px,5vw,46px); font-weight:400;
+    margin-bottom:14px; color:var(--text);
+  }
+  .hero h1 span{color:var(--gold);}
+  .hero p{color:var(--muted); font-size:16px; max-width:520px; margin:0 auto 40px;}
+
+  .pulse-line{width:100%; max-width:640px; height:54px; margin:0 auto 36px; position:relative;}
+  .pulse-line svg{width:100%; height:100%; overflow:visible;}
+  .pulse-line path{
+    fill:none; stroke:var(--slate); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
+    transition:stroke 0.5s ease;
+  }
+  .pulse-line path.beat{ animation:draw 1.8s ease-in-out infinite; }
+  @keyframes draw{
+    0%{stroke-dashoffset:600;} 55%{stroke-dashoffset:0;} 100%{stroke-dashoffset:-600;}
+  }
+  @media (prefers-reduced-motion: reduce){ .pulse-line path.beat{animation:none;} }
+
+  .analyzer{
+    max-width:640px; margin:0 auto; background:var(--surface);
+    border:1px solid var(--border); border-radius:var(--radius);
+    padding:22px; text-align:right;
+  }
+  .analyzer textarea{
+    width:100%; min-height:96px; resize:vertical;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+    color:var(--text); padding:14px; font-family:inherit; font-size:15px;
+  }
+  .analyzer textarea:focus{outline:none; border-color:var(--gold);}
+  .analyzer-footer{display:flex; align-items:center; justify-content:space-between; margin-top:14px;}
+  .char-count{font-size:12px; color:var(--muted);}
+  button.primary{
+    background:var(--gold); color:#1A1408; border:none; border-radius:9px;
+    padding:11px 26px; font-family:inherit; font-size:14px; font-weight:600;
+    cursor:pointer; transition:transform .15s, box-shadow .15s;
+  }
+  button.primary:hover{transform:translateY(-1px); box-shadow:0 6px 18px rgba(232,178,77,.25);}
+  button.primary:disabled{opacity:.5; cursor:not-allowed; transform:none; box-shadow:none;}
+
+  .result{
+    margin-top:18px; padding-top:18px; border-top:1px solid var(--border);
+    display:none;
+  }
+  .result.show{display:block;}
+  .result-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .badge{
+    display:inline-flex; align-items:center; gap:7px; padding:6px 14px;
+    border-radius:999px; font-size:14px; font-weight:600;
+  }
+  .badge.positive{background:var(--gold-dim); color:var(--gold);}
+  .badge.negative{background:var(--rose-dim); color:var(--rose);}
+  .badge.neutral{background:var(--slate-dim); color:var(--slate);}
+  .badge .bdot{width:8px; height:8px; border-radius:50%; background:currentColor;}
+  .confidence{font-size:13px; color:var(--muted);}
+  .lang-chip{
+    display:inline-block; background:var(--surface-2); border:1px solid var(--border);
+    border-radius:6px; padding:2px 8px; font-size:11px; color:var(--gold);
+    margin-left:8px; font-weight:600;
+  }
+  .score-bars{display:flex; flex-direction:column; gap:8px;}
+  .score-row{display:flex; align-items:center; gap:10px; font-size:12px;}
+  .score-row .label{width:52px; color:var(--muted); flex-shrink:0;}
+  .score-row .track{flex:1; height:7px; background:var(--surface-2); border-radius:99px; overflow:hidden;}
+  .score-row .fill{height:100%; border-radius:99px; transition:width .6s ease;}
+  .score-row .val{width:42px; text-align:left; color:var(--muted); font-variant-numeric:tabular-nums;}
+  .error-msg{
+    margin-top:14px; padding:12px 14px; border-radius:10px;
+    background:var(--rose-dim); color:var(--rose); font-size:13px; display:none;
+  }
+  .error-msg.show{display:block;}
+
+  /* ── Section titles ── */
+  .section{padding:44px 0;}
+  .section-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:22px;}
+  .section-head h2{font-size:20px; font-weight:600;}
+  .section-head .eyebrow{font-size:12px; color:var(--gold); letter-spacing:.5px; margin-bottom:4px; display:block;}
+  .section-head .sub{font-size:13px; color:var(--muted);}
+
+  /* ── Stat cards ── */
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px;}
+  .stat-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px;
+  }
+  .stat-card .n{font-size:26px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .stat-card .l{font-size:12px; color:var(--muted); margin-top:4px;}
+  .stat-card.positive .n{color:var(--gold);}
+  .stat-card.negative .n{color:var(--rose);}
+  .stat-card.neutral .n{color:var(--slate);}
+
+  .charts-grid{display:grid; grid-template-columns:1.4fr 1fr; gap:16px; margin-bottom:16px;}
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px;}
+  .panel h3{font-size:14px; font-weight:600; margin-bottom:14px; color:var(--muted);}
+  .panel canvas{max-height:220px;}
+
+  .bottom-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+
+  /* ── Feed ── */
+  .feed-item{
+    display:flex; align-items:flex-start; gap:12px; padding:13px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .feed-item:last-child{border-bottom:none;}
+  .feed-dot{width:9px; height:9px; border-radius:50%; margin-top:6px; flex-shrink:0;}
+  .feed-dot.positive{background:var(--gold);}
+  .feed-dot.negative{background:var(--rose);}
+  .feed-dot.neutral{background:var(--slate);}
+  .feed-text{font-size:13.5px; color:var(--text); overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+  .feed-meta{font-size:11px; color:var(--muted); margin-top:3px;}
+
+  .kw-list{display:flex; flex-wrap:wrap; gap:8px;}
+  .kw-chip{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:999px;
+    padding:6px 13px; font-size:12.5px; color:var(--muted);
+  }
+  .kw-chip b{color:var(--text); font-weight:600;}
+
+  .empty-state{
+    text-align:center; padding:40px 20px; color:var(--muted); font-size:13.5px;
+  }
+  .empty-state strong{color:var(--text); display:block; margin-bottom:6px; font-size:15px;}
+
+  footer{border-top:1px solid var(--border); padding:34px 0 30px; text-align:center;}
+  .credit-title{font-size:14px; font-weight:600; color:var(--text);}
+  .credit-title-en{font-size:12px; color:var(--muted); margin-top:3px; font-style:normal; letter-spacing:.2px;}
+  .credit-divider{width:32px; height:1px; background:var(--gold); opacity:.5; margin:16px auto;}
+  .credit-name{font-size:13px; color:var(--gold); font-weight:600;}
+  .credit-id{font-size:11px; color:var(--muted); margin-top:4px; letter-spacing:.5px; direction:ltr;}
+
+  @media (max-width: 860px){
+    .stat-grid{grid-template-columns:repeat(2,1fr);}
+    .charts-grid, .bottom-grid{grid-template-columns:1fr;}
+    .api-config input{width:140px;}
+  }
+
+  ::selection{background:var(--gold-dim); color:var(--gold);}
+  a{color:var(--gold);}
+  button:focus-visible, textarea:focus-visible, input:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="logotype">نبض</span>
+      <span class="tagline">مرصد المشاعر · عربي <span class="lang-sep">/</span> English</span>
+    </div>
+    <div class="api-config">
+      <span class="dot" id="statusDot"></span>
+      <span>الخادم:</span>
+      <input type="text" id="apiBase" value="http://127.0.0.1:8000" spellcheck="false">
+    </div>
+  </header>
+
+  <!-- ── Hero: Live Analyzer ── -->
+  <section class="hero">
+    <h1>اعرف <span>نبض</span> كل منشور</h1>
+    <p>ألصق أي تعليق أو منشور — عربي أو إنجليزي — واحصل على تصنيف المشاعر خلال أجزاء من الثانية.</p>
+
+    <div class="pulse-line">
+      <svg viewBox="0 0 640 54" preserveAspectRatio="none">
+        <path id="pulsePath" class="beat" stroke-dasharray="600"
+          d="M0,27 L120,27 L145,27 L160,8 L178,46 L196,14 L212,27 L640,27" />
+      </svg>
+    </div>
+
+    <div class="analyzer">
+      <textarea id="analyzeInput" dir="auto" placeholder="مثال: التوصيل تأخر بس المنتج ممتاز... / Example: Great product but delivery was late..." maxlength="3000"></textarea>
+      <div class="analyzer-footer">
+        <span class="char-count"><span id="charCount">0</span>/3000</span>
+        <button class="primary" id="analyzeBtn">حلّل المشاعر</button>
+      </div>
+      <div class="error-msg" id="analyzeError"></div>
+      <div class="result" id="analyzeResult">
+        <div class="result-head">
+          <span class="badge" id="resultBadge"><span class="bdot"></span><span id="resultLabel"></span></span>
+          <span class="confidence">
+            <span class="lang-chip" id="resultLang"></span>
+            الثقة: <span id="resultConfidence"></span>
+          </span>
+        </div>
+        <div class="score-bars">
+          <div class="score-row">
+            <span class="label">إيجابي</span>
+            <div class="track"><div class="fill" id="barPos" style="background:var(--gold); width:0%"></div></div>
+            <span class="val" id="valPos">0%</span>
+          </div>
+          <div class="score-row">
+            <span class="label">سلبي</span>
+            <div class="track"><div class="fill" id="barNeg" style="background:var(--rose); width:0%"></div></div>
+            <span class="val" id="valNeg">0%</span>
+          </div>
+          <div class="score-row">
+            <span class="label">محايد</span>
+            <div class="track"><div class="fill" id="barNeu" style="background:var(--slate); width:0%"></div></div>
+            <span class="val" id="valNeu">0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Dashboard ── -->
+  <section class="section" id="dashboardSection">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">لوحة المتابعة</span>
+        <h2>نظرة عامة على كل المنشورات المحلَّلة</h2>
+      </div>
+      <span class="sub" id="lastUpdated"></span>
+    </div>
+
+    <div id="dashboardContent">
+      <div class="empty-state" id="dashboardEmpty">
+        <strong>ما قدرنا نوصل للخادم</strong>
+        تأكد إن السيرفر شغّال على العنوان الموضّح بالأعلى، ثم أعد تحميل الصفحة.
+      </div>
+
+      <div id="dashboardBody" style="display:none">
+        <div class="stat-grid" id="statGrid"></div>
+
+        <div class="charts-grid">
+          <div class="panel">
+            <h3>اتجاه المشاعر عبر الزمن (آخر 30 يوم)</h3>
+            <canvas id="trendChart"></canvas>
+          </div>
+          <div class="panel">
+            <h3>حسب المنصة</h3>
+            <canvas id="platformChart"></canvas>
+          </div>
+        </div>
+
+        <div class="bottom-grid">
+          <div class="panel">
+            <h3>أحدث المنشورات</h3>
+            <div id="feedList"></div>
+          </div>
+          <div class="panel">
+            <h3>الكلمات الأكثر تكراراً</h3>
+            <div class="kw-list" id="kwList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="credit-title">تحليل المشاعر لمنشورات التواصل الاجتماعي</div>
+    <div class="credit-title-en">Social Media Sentiment Analysis</div>
+    <div class="credit-divider"></div>
+    <div class="credit-name">لؤي عادل عثمان</div>
+    <div class="credit-id">ID: 82064</div>
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const AR = {positive:'إيجابي', negative:'سلبي', neutral:'محايد'};
+const LANG_LABEL = {ar:'AR · عربي', en:'EN · English', mixed:'AR/EN · مزيج'};
+let charts = {};
+
+function apiBase(){ return $('apiBase').value.replace(/\/$/, ''); }
+
+// ── حرف نبض القلب يتلوّن حسب آخر نتيجة ──
+function setPulseColor(sentiment){
+  const map = {positive:'var(--gold)', negative:'var(--rose)', neutral:'var(--slate)'};
+  $('pulsePath').style.stroke = map[sentiment] || 'var(--slate)';
+}
+
+// ── عدّاد الأحرف ──
+$('analyzeInput').addEventListener('input', e => {
+  $('charCount').textContent = e.target.value.length;
+});
+
+// ── تحليل نص حي ──
+async function analyze(){
+  const text = $('analyzeInput').value.trim();
+  const errEl = $('analyzeError');
+  errEl.classList.remove('show');
+  if(text.length < 2){
+    errEl.textContent = 'اكتب نص لا يقل عن حرفين.';
+    errEl.classList.add('show');
+    return;
+  }
+  const btn = $('analyzeBtn');
+  btn.disabled = true; btn.textContent = 'جارٍ التحليل...';
+
+  try{
+    const res = await fetch(`${apiBase()}/api/v1/sentiment/analyze`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text, platform:'manual', save:true})
+    });
+    if(!res.ok){
+      const body = await res.json().catch(()=>({}));
+      throw new Error(body.detail || `خطأ ${res.status}`);
+    }
+    const data = await res.json();
+    showResult(data);
+    setStatus(true);
+    loadDashboard(); // حدّث اللوحة بعد إضافة منشور جديد
+  }catch(err){
+    errEl.textContent = `تعذّر التحليل: ${err.message}. تأكد من تشغيل الخادم وعنوان API الصحيح.`;
+    errEl.classList.add('show');
+    setStatus(false);
+  }finally{
+    btn.disabled = false; btn.textContent = 'حلّل المشاعر';
+  }
+}
+
+function showResult(data){
+  const box = $('analyzeResult');
+  box.classList.add('show');
+  const badge = $('resultBadge');
+  badge.className = `badge ${data.sentiment}`;
+  $('resultLabel').textContent = data.sentiment_ar || AR[data.sentiment];
+  $('resultConfidence').textContent = data.confidence_pct || `${Math.round(data.confidence*100)}%`;
+  $('resultLang').textContent = LANG_LABEL[data.language] || data.language || '';
+
+  const s = data.scores || {};
+  const pos = Math.round((s.positive||0)*100), neg = Math.round((s.negative||0)*100), neu = Math.round((s.neutral||0)*100);
+  $('barPos').style.width = pos+'%'; $('valPos').textContent = pos+'%';
+  $('barNeg').style.width = neg+'%'; $('valNeg').textContent = neg+'%';
+  $('barNeu').style.width = neu+'%'; $('valNeu').textContent = neu+'%';
+
+  setPulseColor(data.sentiment);
+}
+
+$('analyzeBtn').addEventListener('click', analyze);
+$('analyzeInput').addEventListener('keydown', e => {
+  if(e.key === 'Enter' && (e.metaKey || e.ctrlKey)) analyze();
+});
+
+// ── حالة الاتصال بالخادم ──
+function setStatus(ok){
+  const dot = $('statusDot');
+  dot.className = 'dot ' + (ok ? 'ok' : 'err');
+}
+
+// ── تحميل بيانات اللوحة ──
+async function loadDashboard(){
+  try{
+    const [statsRes, postsRes] = await Promise.all([
+      fetch(`${apiBase()}/api/v1/stats/?days=30`),
+      fetch(`${apiBase()}/api/v1/posts/?limit=8`)
+    ]);
+    if(!statsRes.ok) throw new Error('stats');
+    const stats = await statsRes.json();
+    const posts = postsRes.ok ? await postsRes.json() : [];
+
+    setStatus(true);
+    $('dashboardEmpty').style.display = 'none';
+    $('dashboardBody').style.display = 'block';
+    $('lastUpdated').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar-SA');
+
+    renderStatCards(stats);
+    renderTrendChart(stats.recent_trend || []);
+    renderPlatformChart(stats.by_platform || []);
+    renderFeed(posts);
+    renderKeywords(stats.top_keywords || []);
+  }catch(err){
+    setStatus(false);
+    $('dashboardEmpty').style.display = 'block';
+    $('dashboardBody').style.display = 'none';
+  }
+}
+
+function renderStatCards(s){
+  $('statGrid').innerHTML = `
+    <div class="stat-card">
+      <div class="n">${s.total_analyzed ?? 0}</div>
+      <div class="l">إجمالي المنشورات المحلَّلة</div>
+    </div>
+    <div class="stat-card positive">
+      <div class="n">${s.positive_pct ?? 0}%</div>
+      <div class="l">إيجابي (${s.positive ?? 0})</div>
+    </div>
+    <div class="stat-card negative">
+      <div class="n">${s.negative_pct ?? 0}%</div>
+      <div class="l">سلبي (${s.negative ?? 0})</div>
+    </div>
+    <div class="stat-card neutral">
+      <div class="n">${s.neutral_pct ?? 0}%</div>
+      <div class="l">محايد (${s.neutral ?? 0})</div>
+    </div>
+  `;
+}
+
+function renderTrendChart(trend){
+  const ctx = $('trendChart').getContext('2d');
+  const labels = trend.map(t => t.date?.slice(5) || '');
+  const data = {
+    labels,
+    datasets:[
+      {label:'إيجابي', data:trend.map(t=>t.positive||0), borderColor:'#E8B24D', backgroundColor:'rgba(232,178,77,.12)', tension:.35, fill:true, pointRadius:0},
+      {label:'سلبي', data:trend.map(t=>t.negative||0), borderColor:'#C1495B', backgroundColor:'rgba(193,73,91,.10)', tension:.35, fill:true, pointRadius:0},
+    ]
+  };
+  if(charts.trend) charts.trend.destroy();
+  charts.trend = new Chart(ctx, {
+    type:'line', data,
+    options:{
+      responsive:true, maintainAspectRatio:true,
+      plugins:{legend:{labels:{color:'#8B96A8', font:{family:'IBM Plex Sans Arabic'}}}},
+      scales:{
+        x:{ticks:{color:'#8B96A8'}, grid:{color:'#2A3345'}},
+        y:{ticks:{color:'#8B96A8'}, grid:{color:'#2A3345'}, beginAtZero:true}
+      }
+    }
+  });
+}
+
+function renderPlatformChart(byPlatform){
+  const ctx = $('platformChart').getContext('2d');
+  const labels = byPlatform.map(p => p.name || p.platform_id || '—');
+  if(charts.platform) charts.platform.destroy();
+  charts.platform = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'إيجابي', data:byPlatform.map(p=>p.positive||0), backgroundColor:'#E8B24D', borderRadius:5},
+        {label:'سلبي', data:byPlatform.map(p=>p.negative||0), backgroundColor:'#C1495B', borderRadius:5},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:true,
+      plugins:{legend:{labels:{color:'#8B96A8', font:{family:'IBM Plex Sans Arabic'}}}},
+      scales:{
+        x:{ticks:{color:'#8B96A8'}, grid:{display:false}},
+        y:{ticks:{color:'#8B96A8'}, grid:{color:'#2A3345'}, beginAtZero:true}
+      }
+    }
+  });
+}
+
+function renderFeed(posts){
+  const el = $('feedList');
+  if(!posts.length){ el.innerHTML = '<div class="empty-state">لا توجد منشورات بعد — جرّب المحلّل بالأعلى.</div>'; return; }
+  el.innerHTML = posts.map(p => `
+    <div class="feed-item">
+      <span class="feed-dot ${p.sentiment||'neutral'}"></span>
+      <div style="flex:1">
+        <div class="feed-text" dir="auto">${escapeHtml(p.text)}</div>
+        <div class="feed-meta">${AR[p.sentiment] || '—'} · ثقة ${Math.round((p.confidence||0)*100)}% · ${(p.language||'').toUpperCase()}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderKeywords(keywords){
+  const el = $('kwList');
+  if(!keywords.length){ el.innerHTML = '<div class="empty-state">لا توجد كلمات مفتاحية بعد.</div>'; return; }
+  el.innerHTML = keywords.slice(0,16).map(k => `<span class="kw-chip"><b>${escapeHtml(k.keyword||'')}</b> · ${k.total||k.frequency||0}</span>`).join('');
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+// ── تحديث عند تغيير عنوان API ──
+let debounceTimer;
+$('apiBase').addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(loadDashboard, 600);
+});
+
+loadDashboard();
+</script>
+</body>
+</html>
