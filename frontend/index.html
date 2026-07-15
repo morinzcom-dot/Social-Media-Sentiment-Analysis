@@ -6,7 +6,6 @@
 <title>تحليل المشاعر لمنشورات التواصل الاجتماعي — نبض</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rakkas&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.3/chart.umd.min.js"></script>
 <style>
   :root{
     --bg:#12151C;
@@ -41,7 +40,7 @@
     pointer-events:none;
     z-index:0;
   }
-  .wrap{max-width:1180px; margin:0 auto; padding:0 24px; position:relative; z-index:1;}
+  .wrap{max-width:900px; margin:0 auto; padding:0 24px; position:relative; z-index:1;}
 
   /* ── Header ── */
   header{
@@ -125,7 +124,7 @@
     border-radius:6px; padding:2px 8px; font-size:11px; color:var(--gold);
     margin-left:8px; font-weight:600;
   }
-  .score-bars{display:flex; flex-direction:column; gap:8px;}
+  .score-bars{display:flex; flex-direction:column; gap:8px; margin-bottom:18px;}
   .score-row{display:flex; align-items:center; gap:10px; font-size:12px;}
   .score-row .label{width:52px; color:var(--muted); flex-shrink:0;}
   .score-row .track{flex:1; height:7px; background:var(--surface-2); border-radius:99px; overflow:hidden;}
@@ -137,50 +136,43 @@
   }
   .error-msg.show{display:block;}
 
-  /* ── Section titles ── */
+  /* ── Word-highlight explainability ── */
+  .highlight-box{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+    padding:14px; font-size:14px; line-height:2; direction:auto;
+  }
+  .highlight-box .hl-pos{background:var(--gold-dim); color:var(--gold); border-radius:4px; padding:1px 4px;}
+  .highlight-box .hl-neg{background:var(--rose-dim); color:var(--rose); border-radius:4px; padding:1px 4px;}
+  .highlight-legend{display:flex; gap:16px; margin-top:10px; font-size:11.5px; color:var(--muted);}
+  .highlight-legend span{display:inline-flex; align-items:center; gap:5px;}
+  .highlight-legend .lg-dot{width:8px; height:8px; border-radius:50%;}
+  .section-label{font-size:12px; color:var(--muted); margin:16px 0 8px; font-weight:600;}
+
+  /* ── Session log ── */
   .section{padding:44px 0;}
   .section-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:22px;}
   .section-head h2{font-size:20px; font-weight:600;}
   .section-head .eyebrow{font-size:12px; color:var(--gold); letter-spacing:.5px; margin-bottom:4px; display:block;}
   .section-head .sub{font-size:13px; color:var(--muted);}
-
-  /* ── Stat cards ── */
-  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px;}
-  .stat-card{
-    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px;
-  }
-  .stat-card .n{font-size:26px; font-weight:700; font-variant-numeric:tabular-nums;}
-  .stat-card .l{font-size:12px; color:var(--muted); margin-top:4px;}
-  .stat-card.positive .n{color:var(--gold);}
-  .stat-card.negative .n{color:var(--rose);}
-  .stat-card.neutral .n{color:var(--slate);}
-
-  .charts-grid{display:grid; grid-template-columns:1.4fr 1fr; gap:16px; margin-bottom:16px;}
   .panel{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px;}
-  .panel h3{font-size:14px; font-weight:600; margin-bottom:14px; color:var(--muted);}
-  .panel canvas{max-height:220px;}
 
-  .bottom-grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
-
-  /* ── Feed ── */
-  .feed-item{
+  .log-item{
     display:flex; align-items:flex-start; gap:12px; padding:13px 0;
     border-bottom:1px solid var(--border);
   }
-  .feed-item:last-child{border-bottom:none;}
-  .feed-dot{width:9px; height:9px; border-radius:50%; margin-top:6px; flex-shrink:0;}
-  .feed-dot.positive{background:var(--gold);}
-  .feed-dot.negative{background:var(--rose);}
-  .feed-dot.neutral{background:var(--slate);}
-  .feed-text{font-size:13.5px; color:var(--text); overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
-  .feed-meta{font-size:11px; color:var(--muted); margin-top:3px;}
-
-  .kw-list{display:flex; flex-wrap:wrap; gap:8px;}
-  .kw-chip{
-    background:var(--surface-2); border:1px solid var(--border); border-radius:999px;
-    padding:6px 13px; font-size:12.5px; color:var(--muted);
+  .log-item:last-child{border-bottom:none;}
+  .log-dot{width:9px; height:9px; border-radius:50%; margin-top:6px; flex-shrink:0;}
+  .log-dot.positive{background:var(--gold);}
+  .log-dot.negative{background:var(--rose);}
+  .log-dot.neutral{background:var(--slate);}
+  .log-text{font-size:13.5px; color:var(--text); overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+  .log-meta{font-size:11px; color:var(--muted); margin-top:3px;}
+  .log-clear{
+    background:none; border:1px solid var(--border); color:var(--muted);
+    border-radius:8px; padding:6px 14px; font-family:inherit; font-size:12px;
+    cursor:pointer; transition:all .15s;
   }
-  .kw-chip b{color:var(--text); font-weight:600;}
+  .log-clear:hover{border-color:var(--rose); color:var(--rose);}
 
   .empty-state{
     text-align:center; padding:40px 20px; color:var(--muted); font-size:13.5px;
@@ -195,8 +187,6 @@
   .credit-id{font-size:11px; color:var(--muted); margin-top:4px; letter-spacing:.5px; direction:ltr;}
 
   @media (max-width: 860px){
-    .stat-grid{grid-template-columns:repeat(2,1fr);}
-    .charts-grid, .bottom-grid{grid-template-columns:1fr;}
     .api-config input{width:140px;}
   }
 
@@ -216,14 +206,14 @@
     <div class="api-config">
       <span class="dot" id="statusDot"></span>
       <span>الخادم:</span>
-      <input type="text" id="apiBase" value="http://127.0.0.1:8000" spellcheck="false">
+      <input type="text" id="apiBase" value="https://social-media-sentiment-analysis-rho.vercel.app" spellcheck="false">
     </div>
   </header>
 
   <!-- ── Hero: Live Analyzer ── -->
   <section class="hero">
     <h1>اعرف <span>نبض</span> كل منشور</h1>
-    <p>ألصق أي تعليق أو منشور — عربي أو إنجليزي — واحصل على تصنيف المشاعر خلال أجزاء من الثانية.</p>
+    <p>ألصق أي تعليق أو منشور — عربي أو إنجليزي — واحصل على تصنيف المشاعر وسبب القرار خلال أجزاء من الثانية.</p>
 
     <div class="pulse-line">
       <svg viewBox="0 0 640 54" preserveAspectRatio="none">
@@ -264,49 +254,31 @@
             <span class="val" id="valNeu">0%</span>
           </div>
         </div>
+
+        <div class="section-label">لماذا هذا القرار؟</div>
+        <div class="highlight-box" id="highlightBox"></div>
+        <div class="highlight-legend">
+          <span><span class="lg-dot" style="background:var(--gold)"></span> كلمة إيجابية</span>
+          <span><span class="lg-dot" style="background:var(--rose)"></span> كلمة سلبية</span>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ── Dashboard ── -->
-  <section class="section" id="dashboardSection">
+  <!-- ── Session Log ── -->
+  <section class="section" id="logSection">
     <div class="section-head">
       <div>
-        <span class="eyebrow">لوحة المتابعة</span>
-        <h2>نظرة عامة على كل المنشورات المحلَّلة</h2>
+        <span class="eyebrow">هذي الجلسة فقط</span>
+        <h2>سجل التحليلات</h2>
       </div>
-      <span class="sub" id="lastUpdated"></span>
+      <button class="log-clear" id="logClearBtn">مسح السجل</button>
     </div>
-
-    <div id="dashboardContent">
-      <div class="empty-state" id="dashboardEmpty">
-        <strong>ما قدرنا نوصل للخادم</strong>
-        تأكد إن السيرفر شغّال على العنوان الموضّح بالأعلى، ثم أعد تحميل الصفحة.
-      </div>
-
-      <div id="dashboardBody" style="display:none">
-        <div class="stat-grid" id="statGrid"></div>
-
-        <div class="charts-grid">
-          <div class="panel">
-            <h3>اتجاه المشاعر عبر الزمن (آخر 30 يوم)</h3>
-            <canvas id="trendChart"></canvas>
-          </div>
-          <div class="panel">
-            <h3>حسب المنصة</h3>
-            <canvas id="platformChart"></canvas>
-          </div>
-        </div>
-
-        <div class="bottom-grid">
-          <div class="panel">
-            <h3>أحدث المنشورات</h3>
-            <div id="feedList"></div>
-          </div>
-          <div class="panel">
-            <h3>الكلمات الأكثر تكراراً</h3>
-            <div class="kw-list" id="kwList"></div>
-          </div>
+    <div class="panel">
+      <div id="logList">
+        <div class="empty-state" id="logEmpty">
+          <strong>ما فيه تحليلات بعد</strong>
+          جرّب المحلّل بالأعلى — كل جملة تحلّلها تنحفظ هنا لهذي الجلسة فقط (تتصفّر عند تحديث الصفحة).
         </div>
       </div>
     </div>
@@ -325,22 +297,37 @@
 const $ = id => document.getElementById(id);
 const AR = {positive:'إيجابي', negative:'سلبي', neutral:'محايد'};
 const LANG_LABEL = {ar:'AR · عربي', en:'EN · English', mixed:'AR/EN · مزيج'};
-let charts = {};
 
+// ── نفس قاموس المشاعر المستخدم بتدريب النموذج (app/utils/lexicon_features.py) ──
+// يُستخدم هنا فقط لتلوين الكلمات بالنص — تفسير بصري، مو جزء من قرار النموذج نفسه
+const POSITIVE_WORDS = new Set([
+  "رائع","رائعة","ممتاز","ممتازة","جميل","جميلة","أحب","احب","أنصح","انصح",
+  "أفضل","افضل","سعيد","سعيدة","شكرا","شكراً","يجنن","حلو","حلوة","مبدع",
+  "توب","زين","عجبني","استثنائي","موفق","موفقة","خطير","احترافي","احترافية",
+  "سريع","نظيف","نظيفة",
+  "great","excellent","amazing","love","recommend","best","happy","awesome",
+  "fantastic","perfect","wonderful","good","nice",
+]);
+const NEGATIVE_WORDS = new Set([
+  "سيء","سيئ","سيئة","مشكلة","مشاكل","تأخير","متأخر","لايعمل","زفت","خايس",
+  "خايسة","فاشل","فاشلة","أسوأ","اسوأ","محبط","محبطة","خسارة","ضعيف","ضعيفة",
+  "واقع","معطل","معطلة","احتيال","غالي","بطيء","بطيئة","مقرف",
+  "bad","terrible","worst","awful","horrible","disappointing","poor","broken",
+  "useless","frustrating","never","waste",
+]);
+
+let charts = {};
 function apiBase(){ return $('apiBase').value.replace(/\/$/, ''); }
 
-// ── حرف نبض القلب يتلوّن حسب آخر نتيجة ──
 function setPulseColor(sentiment){
   const map = {positive:'var(--gold)', negative:'var(--rose)', neutral:'var(--slate)'};
   $('pulsePath').style.stroke = map[sentiment] || 'var(--slate)';
 }
 
-// ── عدّاد الأحرف ──
 $('analyzeInput').addEventListener('input', e => {
   $('charCount').textContent = e.target.value.length;
 });
 
-// ── تحليل نص حي ──
 async function analyze(){
   const text = $('analyzeInput').value.trim();
   const errEl = $('analyzeError');
@@ -357,7 +344,7 @@ async function analyze(){
     const res = await fetch(`${apiBase()}/api/v1/sentiment/analyze`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({text, platform:'manual', save:true})
+      body: JSON.stringify({text, platform:'manual', save:false})
     });
     if(!res.ok){
       const body = await res.json().catch(()=>({}));
@@ -366,7 +353,7 @@ async function analyze(){
     const data = await res.json();
     showResult(data);
     setStatus(true);
-    loadDashboard(); // حدّث اللوحة بعد إضافة منشور جديد
+    addToLog(data);
   }catch(err){
     errEl.textContent = `تعذّر التحليل: ${err.message}. تأكد من تشغيل الخادم وعنوان API الصحيح.`;
     errEl.classList.add('show');
@@ -391,7 +378,21 @@ function showResult(data){
   $('barNeg').style.width = neg+'%'; $('valNeg').textContent = neg+'%';
   $('barNeu').style.width = neu+'%'; $('valNeu').textContent = neu+'%';
 
+  renderHighlight(data.text_original || '');
   setPulseColor(data.sentiment);
+}
+
+// ── تلوين الكلمات المؤثرة بالنص (تفسير بصري) ──
+function renderHighlight(text){
+  const tokens = text.split(/(\s+)/); // نحافظ على الفراغات كما هي
+  const html = tokens.map(tok => {
+    const bare = tok.replace(/[^\wء-ي]/g, '').toLowerCase();
+    if(!bare) return escapeHtml(tok);
+    if(POSITIVE_WORDS.has(bare)) return `<span class="hl-pos">${escapeHtml(tok)}</span>`;
+    if(NEGATIVE_WORDS.has(bare)) return `<span class="hl-neg">${escapeHtml(tok)}</span>`;
+    return escapeHtml(tok);
+  }).join('');
+  $('highlightBox').innerHTML = html || '<span style="color:var(--muted)">لا توجد كلمات مفتاحية واضحة بهذا النص — القرار مبني على النمط العام للجملة.</span>';
 }
 
 $('analyzeBtn').addEventListener('click', analyze);
@@ -399,127 +400,8 @@ $('analyzeInput').addEventListener('keydown', e => {
   if(e.key === 'Enter' && (e.metaKey || e.ctrlKey)) analyze();
 });
 
-// ── حالة الاتصال بالخادم ──
 function setStatus(ok){
-  const dot = $('statusDot');
-  dot.className = 'dot ' + (ok ? 'ok' : 'err');
-}
-
-// ── تحميل بيانات اللوحة ──
-async function loadDashboard(){
-  try{
-    const [statsRes, postsRes] = await Promise.all([
-      fetch(`${apiBase()}/api/v1/stats/?days=30`),
-      fetch(`${apiBase()}/api/v1/posts/?limit=8`)
-    ]);
-    if(!statsRes.ok) throw new Error('stats');
-    const stats = await statsRes.json();
-    const posts = postsRes.ok ? await postsRes.json() : [];
-
-    setStatus(true);
-    $('dashboardEmpty').style.display = 'none';
-    $('dashboardBody').style.display = 'block';
-    $('lastUpdated').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar-SA');
-
-    renderStatCards(stats);
-    renderTrendChart(stats.recent_trend || []);
-    renderPlatformChart(stats.by_platform || []);
-    renderFeed(posts);
-    renderKeywords(stats.top_keywords || []);
-  }catch(err){
-    setStatus(false);
-    $('dashboardEmpty').style.display = 'block';
-    $('dashboardBody').style.display = 'none';
-  }
-}
-
-function renderStatCards(s){
-  $('statGrid').innerHTML = `
-    <div class="stat-card">
-      <div class="n">${s.total_analyzed ?? 0}</div>
-      <div class="l">إجمالي المنشورات المحلَّلة</div>
-    </div>
-    <div class="stat-card positive">
-      <div class="n">${s.positive_pct ?? 0}%</div>
-      <div class="l">إيجابي (${s.positive ?? 0})</div>
-    </div>
-    <div class="stat-card negative">
-      <div class="n">${s.negative_pct ?? 0}%</div>
-      <div class="l">سلبي (${s.negative ?? 0})</div>
-    </div>
-    <div class="stat-card neutral">
-      <div class="n">${s.neutral_pct ?? 0}%</div>
-      <div class="l">محايد (${s.neutral ?? 0})</div>
-    </div>
-  `;
-}
-
-function renderTrendChart(trend){
-  const ctx = $('trendChart').getContext('2d');
-  const labels = trend.map(t => t.date?.slice(5) || '');
-  const data = {
-    labels,
-    datasets:[
-      {label:'إيجابي', data:trend.map(t=>t.positive||0), borderColor:'#E8B24D', backgroundColor:'rgba(232,178,77,.12)', tension:.35, fill:true, pointRadius:0},
-      {label:'سلبي', data:trend.map(t=>t.negative||0), borderColor:'#C1495B', backgroundColor:'rgba(193,73,91,.10)', tension:.35, fill:true, pointRadius:0},
-    ]
-  };
-  if(charts.trend) charts.trend.destroy();
-  charts.trend = new Chart(ctx, {
-    type:'line', data,
-    options:{
-      responsive:true, maintainAspectRatio:true,
-      plugins:{legend:{labels:{color:'#8B96A8', font:{family:'IBM Plex Sans Arabic'}}}},
-      scales:{
-        x:{ticks:{color:'#8B96A8'}, grid:{color:'#2A3345'}},
-        y:{ticks:{color:'#8B96A8'}, grid:{color:'#2A3345'}, beginAtZero:true}
-      }
-    }
-  });
-}
-
-function renderPlatformChart(byPlatform){
-  const ctx = $('platformChart').getContext('2d');
-  const labels = byPlatform.map(p => p.name || p.platform_id || '—');
-  if(charts.platform) charts.platform.destroy();
-  charts.platform = new Chart(ctx, {
-    type:'bar',
-    data:{
-      labels,
-      datasets:[
-        {label:'إيجابي', data:byPlatform.map(p=>p.positive||0), backgroundColor:'#E8B24D', borderRadius:5},
-        {label:'سلبي', data:byPlatform.map(p=>p.negative||0), backgroundColor:'#C1495B', borderRadius:5},
-      ]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:true,
-      plugins:{legend:{labels:{color:'#8B96A8', font:{family:'IBM Plex Sans Arabic'}}}},
-      scales:{
-        x:{ticks:{color:'#8B96A8'}, grid:{display:false}},
-        y:{ticks:{color:'#8B96A8'}, grid:{color:'#2A3345'}, beginAtZero:true}
-      }
-    }
-  });
-}
-
-function renderFeed(posts){
-  const el = $('feedList');
-  if(!posts.length){ el.innerHTML = '<div class="empty-state">لا توجد منشورات بعد — جرّب المحلّل بالأعلى.</div>'; return; }
-  el.innerHTML = posts.map(p => `
-    <div class="feed-item">
-      <span class="feed-dot ${p.sentiment||'neutral'}"></span>
-      <div style="flex:1">
-        <div class="feed-text" dir="auto">${escapeHtml(p.text)}</div>
-        <div class="feed-meta">${AR[p.sentiment] || '—'} · ثقة ${Math.round((p.confidence||0)*100)}% · ${(p.language||'').toUpperCase()}</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function renderKeywords(keywords){
-  const el = $('kwList');
-  if(!keywords.length){ el.innerHTML = '<div class="empty-state">لا توجد كلمات مفتاحية بعد.</div>'; return; }
-  el.innerHTML = keywords.slice(0,16).map(k => `<span class="kw-chip"><b>${escapeHtml(k.keyword||'')}</b> · ${k.total||k.frequency||0}</span>`).join('');
+  $('statusDot').className = 'dot ' + (ok ? 'ok' : 'err');
 }
 
 function escapeHtml(str){
@@ -528,14 +410,45 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 
-// ── تحديث عند تغيير عنوان API ──
-let debounceTimer;
-$('apiBase').addEventListener('input', () => {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(loadDashboard, 600);
-});
+// ── سجل جلسة محلي (بالذاكرة فقط — يتصفّر عند تحديث الصفحة، لا يُستخدم أي تخزين متصفح) ──
+let sessionLog = [];
 
-loadDashboard();
+function addToLog(data){
+  sessionLog.unshift({
+    text: data.text_original,
+    sentiment: data.sentiment,
+    confidence: data.confidence,
+    language: data.language,
+    time: new Date().toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'}),
+  });
+  renderLog();
+}
+
+function renderLog(){
+  const el = $('logList');
+  if(!sessionLog.length){
+    el.innerHTML = `
+      <div class="empty-state" id="logEmpty">
+        <strong>ما فيه تحليلات بعد</strong>
+        جرّب المحلّل بالأعلى — كل جملة تحلّلها تنحفظ هنا لهذي الجلسة فقط (تتصفّر عند تحديث الصفحة).
+      </div>`;
+    return;
+  }
+  el.innerHTML = sessionLog.map(item => `
+    <div class="log-item">
+      <span class="log-dot ${item.sentiment}"></span>
+      <div style="flex:1">
+        <div class="log-text" dir="auto">${escapeHtml(item.text)}</div>
+        <div class="log-meta">${AR[item.sentiment]} · ثقة ${Math.round(item.confidence*100)}% · ${(item.language||'').toUpperCase()} · ${item.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+$('logClearBtn').addEventListener('click', () => {
+  sessionLog = [];
+  renderLog();
+});
 </script>
 </body>
 </html>

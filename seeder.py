@@ -35,6 +35,7 @@ from sklearn.metrics import (
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).parent))
 from app.utils.text_processor import clean_text
+from app.utils.lexicon_features import LexiconFeaturizer
 
 MODEL_DIR = Path("data/models")
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
@@ -183,10 +184,11 @@ def train_model(
     )
     print(f"\n  تدريب: {len(X_train)} | اختبار: {len(X_test)}")
 
-    # TF-IDF Vectorizer — دمج ميزات على مستوى الأحرف (يقاوم اللهجات والأخطاء الإملائية)
-    # مع ميزات على مستوى الكلمات (يلتقط المفردات ذات الدلالة العاطفية المباشرة).
-    # هذا الدمج رفع الدقة من ~71% إلى ~83% في تجارب التقييم.
-    print("\n  تجهيز TF-IDF Vectorizer (حروف + كلمات)...")
+    # TF-IDF (حروف + كلمات) + قاموس مشاعر بسيط كميزة تفسيرية إضافية.
+    # ملاحظة صادقة: القاموس يرفع الدقة بشكل طفيف جداً (~0.1%) لأن ميزات
+    # الكلمات أصلاً تتعلم أوزان الكلمات الشائعة من البيانات؛ قيمته الحقيقية
+    # تفسيرية (وضوح القرار) وليست في رفع الدقة.
+    print("\n  تجهيز TF-IDF Vectorizer (حروف + كلمات + قاموس مشاعر)...")
     vectorizer = FeatureUnion([
         ("char", TfidfVectorizer(
             analyzer="char_wb",
@@ -202,10 +204,11 @@ def train_model(
             sublinear_tf=True,
             min_df=2,
         )),
+        ("lexicon", LexiconFeaturizer()),
     ])
     X_tr = vectorizer.fit_transform(X_train)
     X_te = vectorizer.transform(X_test)
-    vocab_size = sum(len(t.vocabulary_) for _, t in vectorizer.transformer_list)
+    vocab_size = sum(len(t.vocabulary_) for _, t in vectorizer.transformer_list if hasattr(t, "vocabulary_"))
     print(f"  حجم المفردات: {vocab_size:,} n-gram (حروف+كلمات)")
 
     # تدريب النموذج

@@ -38,6 +38,14 @@ def _normalize_db_url(url: str) -> tuple[str, dict]:
             query.pop(libpq_only_param, None)
         url = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
+        # نقاط النهاية المُجمَّعة (pooler) مثل Neon تستخدم PgBouncer بوضع
+        # "transaction mode" — وهذا الوضع غير متوافق مع الجمل المُحضَّرة
+        # (prepared statements) التي يستخدمها asyncpg افتراضياً، ما يسبب
+        # فشل عشوائي عند طلبات متزامنة (مثل GET /stats و GET /posts معاً).
+        # تعطيل الكاش هنا يحل المشكلة بدون التضحية بأي أداء يُذكر.
+        if "pooler" in parts.netloc or "pgbouncer" in parts.netloc:
+            connect_args["statement_cache_size"] = 0
+
     return url, connect_args
 
 

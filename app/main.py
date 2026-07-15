@@ -72,7 +72,7 @@ async def _seed_defaults():
                 if hasattr(v, "vocabulary_"):
                     vocab = len(v.vocabulary_)
                 elif hasattr(v, "transformer_list"):
-                    vocab = sum(len(t.vocabulary_) for _, t in v.transformer_list)
+                    vocab = sum(len(t.vocabulary_) for _, t in v.transformer_list if hasattr(t, "vocabulary_"))
 
             # قراءة مقاييس الأداء الحقيقية من تقرير التقييم بدلاً من قيم ثابتة وهمية
             accuracy = f1 = None
